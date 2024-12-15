@@ -18,7 +18,7 @@ geojson_path = './TL_SCCO_CTPRVN.json'
 # 데이터 로드 및 전처리
 try:
     # CSV 데이터 로드
-    df = pd.read_csv(data_path, encoding='UTF-8')
+    df = pd.read_csv('./다년도_대학원개황.csv', encoding='UTF-8')
 
     # 각 연도별로 필요한 열 순서대로 지정
     columns_mapping = {
@@ -100,7 +100,7 @@ except Exception as e:
 # ---- GeoJSON 데이터 로드 ----
 try:
     # GeoJSON 데이터 로드
-    korea_geo = gpd.read_file(geojson_path)
+    korea_geo = gpd.read_file('./TL_SCCO_CTPRVN.json')
     st.write("### GeoJSON Data Preview:")
     st.write(korea_geo.head())
 

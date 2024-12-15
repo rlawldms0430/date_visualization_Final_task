@@ -6,29 +6,19 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from folium.features import GeoJsonTooltip
-import urllib.parse
 
 # ---- 제목과 설명 ----
 st.title("Graduate School Enrollment Visualization 🎓")
 st.write("This dashboard visualizes graduate school enrollment trends by region.")
 
 # ---- 데이터 로드 ----
-#data_path = './다년도_대학원개황.csv'
+data_path = './data.csv'
 geojson_path = './TL_SCCO_CTPRVN.json'
-
-# 원본 URL
-base_url = "https://raw.githubusercontent.com/rlawldms0430/date_visualization_Final_task/main/"
-file_name = "다년도_대학원개황.csv"
-
-# URL 인코딩
-encoded_file_name = urllib.parse.quote(file_name)
-csv_url = base_url + encoded_file_name
-
 
 # 데이터 로드 및 전처리
 try:
     # CSV 데이터 로드
-    df = pd.read_csv(csv_url, encoding='utf-8')
+    df = pd.read_csv(data_path, encoding='UTF-8')
 
     # 각 연도별로 필요한 열 순서대로 지정
     columns_mapping = {

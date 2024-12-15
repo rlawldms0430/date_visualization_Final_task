@@ -6,6 +6,7 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from folium.features import GeoJsonTooltip
+import plotly.express as px
 
 # ---- 제목과 설명 ----
 st.title("Graduate School Enrollment Visualization 🎓")
@@ -231,3 +232,30 @@ except Exception as e:
     st.error(f"❌ Error displaying map: {e}")
 
 
+
+# ---- 연도별 비교 시각화 ----
+if df is not None:
+    st.write(f"## Regional Comparison of Graduate Enrollment in {year}")
+    
+    # 데이터 정리
+    df_comparison = df[['시도별(1)', f'Total_Students_{year}']].rename(columns={'시도별(1)': 'Region', f'Total_Students_{year}': 'Total Students'})
+
+    # 막대 그래프 시각화
+    fig = px.bar(df_comparison, x='Region', y='Total Students',
+                 title=f"Graduate Enrollment by Region in {year}", color='Total Students')
+    st.plotly_chart(fig)
+
+    # ---- 두 연도 비교 ----
+    st.write("## Compare Enrollment Between Two Years")
+    year1 = st.selectbox("Select First Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year1")
+    year2 = st.selectbox("Select Second Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year2")
+
+    # 데이터 병합
+    df_year1 = df[['시도별(1)', f'Total_Students_{year1}']].rename(columns={f'Total_Students_{year1}': f'{year1}'})
+    df_year2 = df[['시도별(1)', f'Total_Students_{year2}']].rename(columns={f'Total_Students_{year2}': f'{year2}'})
+    df_compare = df_year1.merge(df_year2, on='시도별(1)').rename(columns={'시도별(1)': 'Region'})
+
+    # 두 연도 비교 막대 그래프
+    fig_compare = px.bar(df_compare, x='Region', y=[f'{year1}', f'{year2}'], barmode='group',
+                         title=f"Comparison of Graduate Enrollment: {year1} vs {year2}")
+    st.plotly_chart(fig_compare)

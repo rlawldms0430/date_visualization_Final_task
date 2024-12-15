@@ -12,8 +12,8 @@ st.title("Graduate School Enrollment Visualization 🎓")
 st.write("This dashboard visualizes graduate school enrollment trends by region.")
 
 # ---- 데이터 로드 ----
-data_path = '다년도_대학원개황.csv'
-geojson_path = 'TL_SCCO_CTPRVN.json'
+data_path = './다년도_대학원개황.csv'
+geojson_path = './TL_SCCO_CTPRVN.json'
 
 # 데이터 로드 및 전처리
 try:

@@ -6,6 +6,7 @@ import pandas as pd
 import folium
 from streamlit_folium import st_folium
 from folium.features import GeoJsonTooltip
+import urllib.parse
 
 # ---- 제목과 설명 ----
 st.title("Graduate School Enrollment Visualization 🎓")
@@ -15,9 +16,13 @@ st.write("This dashboard visualizes graduate school enrollment trends by region.
 #data_path = './다년도_대학원개황.csv'
 geojson_path = './TL_SCCO_CTPRVN.json'
 
-csv_url = 'https://raw.githubusercontent.com/username/repository/main/다년도_대학원개황.csv'
-df = pd.read_csv(csv_url, encoding='utf-8')
+# 원본 URL
+base_url = "https://raw.githubusercontent.com/rlawldms0430/date_visualization_Final_task/main/"
+file_name = "다년도_대학원개황.csv"
 
+# URL 인코딩
+encoded_file_name = urllib.parse.quote(file_name)
+csv_url = base_url + encoded_file_name
 
 
 # 데이터 로드 및 전처리

@@ -115,6 +115,7 @@ except Exception as e:
 
 # ---- 사이드바: 연도 선택 ----
 year = st.sidebar.selectbox("Select Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year_selectbox")
+map_option = st.sidebar.radio("Select Data to Visualize", ["Total Students", "Master Students", "PhD Students"], key="map_option")
 
 # 연도별 학생 수 열 리스트
 columns_to_select = [
@@ -138,7 +139,6 @@ columns_for_conversion = [
     f'PhD_Female_Students_{year}'
 ]
 
-# 숫자 타입으로 변환 (NaN 값은 자동으로 처리)
 for col in columns_for_conversion:
     df_year[col] = pd.to_numeric(df_year[col], errors='coerce')
 
@@ -193,48 +193,31 @@ try:
     # Folium 지도 생성
     m = folium.Map(location=[36.5, 127.5], zoom_start=7)
 
-    # 총학생수 Choropleth 지도 추가
+    # 시각화 데이터 선택
+    map_column = {
+        "Total Students": f'Total_Students_{year}',
+        "Master Students": f'Master_Students_{year}',
+        "PhD Students": f'PhD_Students_{year}'
+    }[map_option]
+
+    # Choropleth 지도 추가
     folium.Choropleth(
         geo_data=merged_data.to_json(),
         data=merged_data,
-        columns=['CTP_KOR_NM', f'Total_Students_{year}'],
+        columns=['CTP_KOR_NM', map_column],
         key_on='feature.properties.CTP_KOR_NM',
-        fill_color='YlGnBu',
+        fill_color='YlGnBu' if map_option == "Total Students" else ('BuPu' if map_option == "Master Students" else 'OrRd'),
         fill_opacity=0.7,
         line_opacity=0.2,
-        legend_name=f'Total Students in {year}'
+        legend_name=f'{map_option} in {year}'
     ).add_to(m)
 
-    # 석사 학생수 Choropleth 지도 추가
-    folium.Choropleth(
-        geo_data=merged_data.to_json(),
-        data=merged_data,
-        columns=['CTP_KOR_NM', f'Master_Students_{year}'],
-        key_on='feature.properties.CTP_KOR_NM',
-        fill_color='BuPu',  # 색상을 다르게 설정
-        fill_opacity=0.7,
-        line_opacity=0.2,
-        legend_name=f'Master Students in {year}'
-    ).add_to(m)
-
-    # 박사 학생수 Choropleth 지도 추가
-    folium.Choropleth(
-        geo_data=merged_data.to_json(),
-        data=merged_data,
-        columns=['CTP_KOR_NM', f'PhD_Students_{year}'],
-        key_on='feature.properties.CTP_KOR_NM',
-        fill_color='OrRd',  # 색상을 다르게 설정
-        fill_opacity=0.7,
-        line_opacity=0.2,
-        legend_name=f'PhD Students in {year}'
-    ).add_to(m)
-
-    # 툴팁 추가 (지역, 총학생수, 석사, 박사)
+    # 툴팁 추가 (지역 및 선택된 학생 수)
     folium.GeoJson(
         merged_data,
         tooltip=GeoJsonTooltip(
-            fields=['CTP_KOR_NM', f'Total_Students_{year}', f'Master_Students_{year}', f'PhD_Students_{year}'],
-            aliases=['Region', 'Total Students', 'Master Students', 'PhD Students'],
+            fields=['CTP_KOR_NM', map_column],
+            aliases=['Region', f'{map_option}'],
             localize=True,
             sticky=False,
             labels=True,
@@ -248,14 +231,12 @@ try:
         )
     ).add_to(m)
 
-    # 레이어 컨트롤 추가 (각각의 학생 수를 선택할 수 있게)
-    folium.LayerControl().add_to(m)
-
     # Streamlit에서 Folium 지도 출력
     st_folium(m, width=800, height=600)
 
 except Exception as e:
     st.error(f"❌ Error displaying map: {e}")
+
 
 # ---- 석·박사 학생 수 비중 및 연도별 추이 (누적 영역 그래프) ----
 st.write("## Trend of Master's and Doctoral Students Over Years")
@@ -270,8 +251,8 @@ try:
     # 데이터프레임 생성
     trend_data = pd.DataFrame({
         "Year": years,
-        "Master Students": master_students,
         "PhD Students": phd_students,
+        "Master Students": master_students,
         "Total Students": total_students
     })
 
@@ -279,18 +260,15 @@ try:
     fig_area = px.area(
         trend_data,
         x="Year",
-        y=["Master Students", "PhD Students"],
+        y=["PhD Students", "Master Students"],
         title="Trend of Master's and Doctoral Students Over Years",
-        color_discrete_map={"Master Students": "#636EFA", "PhD Students": "#EF553B"},
+        color_discrete_map={"PhD Students": "#EF553B", "Master Students": "#636EFA"},
         markers=True,
         custom_data=["Total Students"]  # 학생 수 합계를 툴팁에 전달
     )
 
-    # y축 레이블 제거
-    fig_area.update_yaxes(
-        title_text="",  # y축 제목 제거
-        showticklabels=False  # y축 눈금 레이블 제거
-    )
+    # y축 숨기기
+    fig_area.update_yaxes(visible=False)
 
     # x축 정리
     fig_area.update_xaxes(
@@ -299,14 +277,123 @@ try:
         tickvals=years
     )
 
-    # # 툴팁 커스터마이징
-    # fig_area.update_traces(
-    #     hovertemplate="<b>Year:</b> %{x}<br><b>학생 수 합계:</b> %{customdata[0]:,}명<extra></extra>"
-    # )
+    # 툴팁 커스터마이징
+    fig_area.update_traces(
+        hovertemplate="<b>Year:</b> %{x}<br><b>PhD Students:</b> %{y[0]:,}<br>"
+                        "<b>Master Students:</b> %{y[1]:,}<br><b>Total Students:</b> %{customdata[0]:,}"
+    )
 
     # 그래프 출력
     st.plotly_chart(fig_area)
 
+    # 막대 그래프 추가: 석사와 박사 비율 시각화
+    st.write("### Master's and Doctoral Students Ratio")
+    trend_data_long = trend_data.melt(id_vars=["Year"], value_vars=["PhD Students", "Master Students"],
+                                      var_name="Degree", value_name="Number of Students")
+
+    # 석사와 박사 순서 조정
+    trend_data_long["Degree"] = pd.Categorical(trend_data_long["Degree"], 
+                                               categories=["PhD Students", "Master Students"], 
+                                               ordered=True)
+
+    fig_bar = px.bar(
+        trend_data_long,
+        x="Year",
+        y="Number of Students",
+        color="Degree",
+        barmode="group",
+        title="Comparison of Master's and Doctoral Students",
+        color_discrete_map={"PhD Students": "#EF553B", "Master Students": "#636EFA"}
+    )
+
+    # y축 숨기기
+    fig_bar.update_yaxes(visible=False)
+
+    st.plotly_chart(fig_bar)
+
 except Exception as e:
     st.error(f"❌ Error displaying trend graph: {e}")
 
+
+
+
+
+
+
+# # ---- 석·박사 학생 수 비중 및 연도별 추이 (누적 영역 그래프) ----
+# st.write("## Trend of Master's and Doctoral Students Over Years")
+
+# try:
+#     # 석사 및 박사 학생 수 데이터 정리
+#     years = ["2018", "2019", "2020", "2021", "2022", "2023"]
+#     master_students = [df_cleaned[f"Master_Students_{year}"].sum() for year in years]
+#     phd_students = [df_cleaned[f"PhD_Students_{year}"].sum() for year in years]
+#     total_students = [m + p for m, p in zip(master_students, phd_students)]  # 학생 수 합계
+
+#     # 데이터프레임 생성
+#     trend_data = pd.DataFrame({
+#         "Year": years,
+#         "Master Students": master_students,
+#         "PhD Students": phd_students,
+#         "Total Students": total_students
+#     })
+
+#     # 누적 영역 그래프 시각화
+#     fig_area = px.area(
+#         trend_data,
+#         x="Year",
+#         y=["Master Students", "PhD Students"],
+#         title="Trend of Master's and Doctoral Students Over Years",
+#         color_discrete_map={"Master Students": "#636EFA", "PhD Students": "#EF553B"},
+#         markers=True,
+#         custom_data=["Total Students"]  # 학생 수 합계를 툴팁에 전달
+#     )
+
+#     # y축 레이블 설정
+#     fig_area.update_yaxes(
+#         title_text="Number of Students"
+#     )
+
+#     # x축 정리
+#     fig_area.update_xaxes(
+#         title_text="Year", 
+#         tickmode="array", 
+#         tickvals=years
+#     )
+
+#     # 툴팁 커스터마이징
+#     fig_area.update_traces(
+#         hovertemplate="<b>Year:</b> %{x}<br><b>Master Students:</b> %{y[0]:,}<br>"
+#                         "<b>PhD Students:</b> %{y[1]:,}<br><b>Total Students:</b> %{customdata[0]:,}"
+#     )
+
+#     # 그래프 출력
+#     st.plotly_chart(fig_area)
+
+#     # 막대 그래프 추가: 석사와 박사 비율 시각화
+#     st.write("### Master's and Doctoral Students Ratio")
+#     trend_data_long = trend_data.melt(id_vars=["Year"], value_vars=["Master Students", "PhD Students"],
+#                                       var_name="Degree", value_name="Number of Students")
+
+#     # 석사와 박사 순서 조정
+#     trend_data_long["Degree"] = pd.Categorical(trend_data_long["Degree"], 
+#                                                categories=["PhD Students", "Master Students"], 
+#                                                ordered=True)
+
+#     fig_bar = px.bar(
+#         trend_data_long,
+#         x="Year",
+#         y="Number of Students",
+#         color="Degree",
+#         barmode="group",
+#         title="Comparison of Master's and Doctoral Students",
+#         color_discrete_map={"PhD Students": "#EF553B", "Master Students": "#636EFA"}
+#     )
+
+#     # y축 레이블 명확화
+#     fig_bar.update_yaxes(title_text="Number of Students")
+
+#     st.plotly_chart(fig_bar)
+
+# except Exception as e:
+#     st.error(f"❌ Error displaying trend graph: {e}")

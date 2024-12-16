@@ -112,6 +112,7 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error loading GeoJSON data: {e}")
+
 # ---- 사이드바: 연도 선택 ----
 year = st.sidebar.selectbox("Select Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year_selectbox")
 
@@ -159,6 +160,31 @@ try:
 
 except Exception as e:
     st.error(f"❌ Error merging data: {e}")
+
+# ---- 성별 비율 비교 시각화 ----
+st.write(f"## Gender Ratio of Graduate Students in {year}")
+
+try:
+    # 성별 비율 데이터 정리
+    df_gender = df_year.copy()
+    df_gender['Male_Students'] = df_gender[f'Total_Students_{year}'] - df_gender[f'Female_Students_{year}']
+    df_gender = df_gender[['Region', f'Female_Students_{year}', 'Male_Students']]
+
+    # 막대 그래프 시각화
+    fig_gender = px.bar(
+        df_gender,
+        x='Region',
+        y=[f'Female_Students_{year}', 'Male_Students'],
+        title=f"Gender Ratio of Graduate Students in {year}",
+        labels={"value": "Number of Students", "variable": "Gender"},
+        barmode='group'
+    )
+
+    st.plotly_chart(fig_gender)
+
+except Exception as e:
+    st.error(f"❌ Error displaying gender ratio graph: {e}")
+
 
 # ---- 지도 시각화 ----
 st.write(f"## {year} Map Visualization of Graduate Enrollment")
@@ -231,31 +257,56 @@ try:
 except Exception as e:
     st.error(f"❌ Error displaying map: {e}")
 
+# ---- 석·박사 학생 수 비중 및 연도별 추이 (누적 영역 그래프) ----
+st.write("## Trend of Master's and Doctoral Students Over Years")
 
+try:
+    # 석사 및 박사 학생 수 데이터 정리
+    years = ["2018", "2019", "2020", "2021", "2022", "2023"]
+    master_students = [df_cleaned[f"Master_Students_{year}"].sum() for year in years]
+    phd_students = [df_cleaned[f"PhD_Students_{year}"].sum() for year in years]
+    total_students = [m + p for m, p in zip(master_students, phd_students)]  # 학생 수 합계
 
-# ---- 연도별 비교 시각화 ----
-if df is not None:
-    st.write(f"## Regional Comparison of Graduate Enrollment in {year}")
-    
-    # 데이터 정리
-    df_comparison = df[['시도별(1)', f'Total_Students_{year}']].rename(columns={'시도별(1)': 'Region', f'Total_Students_{year}': 'Total Students'})
+    # 데이터프레임 생성
+    trend_data = pd.DataFrame({
+        "Year": years,
+        "Master Students": master_students,
+        "PhD Students": phd_students,
+        "Total Students": total_students
+    })
 
-    # 막대 그래프 시각화
-    fig = px.bar(df_comparison, x='Region', y='Total Students',
-                 title=f"Graduate Enrollment by Region in {year}", color='Total Students')
-    st.plotly_chart(fig)
+    # 누적 영역 그래프 시각화
+    fig_area = px.area(
+        trend_data,
+        x="Year",
+        y=["Master Students", "PhD Students"],
+        title="Trend of Master's and Doctoral Students Over Years",
+        color_discrete_map={"Master Students": "#636EFA", "PhD Students": "#EF553B"},
+        markers=True,
+        custom_data=["Total Students"]  # 학생 수 합계를 툴팁에 전달
+    )
 
-    # ---- 두 연도 비교 ----
-    st.write("## Compare Enrollment Between Two Years")
-    year1 = st.selectbox("Select First Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year1")
-    year2 = st.selectbox("Select Second Year", ["2018", "2019", "2020", "2021", "2022", "2023"], key="year2")
+    # y축 레이블 제거
+    fig_area.update_yaxes(
+        title_text="",  # y축 제목 제거
+        showticklabels=False  # y축 눈금 레이블 제거
+    )
 
-    # 데이터 병합
-    df_year1 = df[['시도별(1)', f'Total_Students_{year1}']].rename(columns={f'Total_Students_{year1}': f'{year1}'})
-    df_year2 = df[['시도별(1)', f'Total_Students_{year2}']].rename(columns={f'Total_Students_{year2}': f'{year2}'})
-    df_compare = df_year1.merge(df_year2, on='시도별(1)').rename(columns={'시도별(1)': 'Region'})
+    # x축 정리
+    fig_area.update_xaxes(
+        title_text="Year", 
+        tickmode="array", 
+        tickvals=years
+    )
 
-    # 두 연도 비교 막대 그래프
-    fig_compare = px.bar(df_compare, x='Region', y=[f'{year1}', f'{year2}'], barmode='group',
-                         title=f"Comparison of Graduate Enrollment: {year1} vs {year2}")
-    st.plotly_chart(fig_compare)
+    # # 툴팁 커스터마이징
+    # fig_area.update_traces(
+    #     hovertemplate="<b>Year:</b> %{x}<br><b>학생 수 합계:</b> %{customdata[0]:,}명<extra></extra>"
+    # )
+
+    # 그래프 출력
+    st.plotly_chart(fig_area)
+
+except Exception as e:
+    st.error(f"❌ Error displaying trend graph: {e}")
+
